@@ -141,10 +141,7 @@ Based on the information provided, respond with your analysis.`;
               },
             },
           ],
-          tool_choice: {
-            type: "function",
-            function: { name: "classify_pollution" },
-          },
+          tool_choice: "auto",
         }),
       }
     );
