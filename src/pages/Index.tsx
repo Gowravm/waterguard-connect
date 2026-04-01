@@ -4,15 +4,16 @@ import { Droplets, MapPin, Users, BarChart3, ArrowRight, Shield, Camera, Sparkle
 import { Button } from "@/components/ui/button";
 import AppLayout from "@/components/layout/AppLayout";
 import { DEMO_REPORTS, DASHBOARD_STATS } from "@/lib/demoData";
+import heroImage from "@/assets/hero-water-community.jpg";
 
 export default function Index() {
   return (
     <AppLayout>
       {/* Hero */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-ocean-light via-background to-teal-light">
-        <div className="absolute inset-0 opacity-5">
-          <div className="absolute top-20 left-10 w-72 h-72 rounded-full bg-primary blur-3xl" />
-          <div className="absolute bottom-10 right-10 w-96 h-96 rounded-full bg-secondary blur-3xl" />
+      <section className="relative overflow-hidden">
+        <div className="absolute inset-0">
+          <img src={heroImage} alt="Community volunteers cleaning a lake shoreline at golden hour" width={1920} height={1080} className="w-full h-full object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-r from-background/95 via-background/80 to-background/40" />
         </div>
         <div className="container relative py-20 md:py-32">
           <motion.div

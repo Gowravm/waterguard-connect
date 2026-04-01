@@ -7,8 +7,20 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { POLLUTION_CATEGORIES, SEVERITY_LABELS } from "@/lib/demoData";
-import { Camera, MapPin, Sparkles } from "lucide-react";
+import { Camera, MapPin, Sparkles, Loader2, CheckCircle2, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+
+interface AiAnalysis {
+  predicted_waste_type: string;
+  predicted_tags: string[];
+  confidence_score: number;
+  severity_score: number;
+  severity_reason: string;
+  urgency_flag: boolean;
+  suggested_action: string;
+  _meta: { model: string; disclaimer: string };
+}
 
 export default function ReportCreate() {
   const navigate = useNavigate();
@@ -20,6 +32,9 @@ export default function ReportCreate() {
   const [lat, setLat] = useState("");
   const [lng, setLng] = useState("");
   const [locating, setLocating] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [aiResult, setAiResult] = useState<AiAnalysis | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   const handleGeolocate = () => {
     if (!navigator.geolocation) {
@@ -41,14 +56,112 @@ export default function ReportCreate() {
     );
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleAiAnalyze = async () => {
+    if (!title && !description) {
+      toast.error("Add a title or description first so AI can analyze");
+      return;
+    }
+    setAnalyzing(true);
+    setAiResult(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("analyze-report", {
+        body: {
+          title,
+          description,
+          pollutionCategory: category || undefined,
+        },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      setAiResult(data as AiAnalysis);
+
+      // Auto-fill category and severity from AI if user hasn't set them
+      if (!category && data.predicted_waste_type) {
+        setCategory(data.predicted_waste_type);
+      }
+      if (!severity && data.severity_score) {
+        setSeverity(String(data.severity_score));
+      }
+
+      toast.success("AI analysis complete — review suggestions below");
+    } catch (err: any) {
+      console.error("AI analysis error:", err);
+      toast.error(err.message || "AI analysis failed");
+    } finally {
+      setAnalyzing(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title || !category || !severity) {
       toast.error("Please fill in required fields");
       return;
     }
-    toast.success("Report submitted! (Demo — not saved to database yet)");
-    navigate("/feed");
+
+    setSubmitting(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user) {
+        toast.error("Please sign in to submit a report");
+        setSubmitting(false);
+        return;
+      }
+
+      const { data: report, error } = await supabase
+        .from("pollution_reports")
+        .insert({
+          user_id: user.id,
+          title,
+          description: description || null,
+          water_body_name: waterBody || null,
+          lat: lat ? parseFloat(lat) : null,
+          lng: lng ? parseFloat(lng) : null,
+          location_text: waterBody || null,
+          pollution_category: category,
+          manual_severity: parseInt(severity),
+          ai_severity: aiResult?.severity_score || null,
+          status: "open",
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Save AI analysis if we have one
+      if (aiResult && report) {
+        await supabase.from("report_ai_analysis").insert({
+          report_id: report.id,
+          predicted_waste_type: aiResult.predicted_waste_type,
+          predicted_tags: aiResult.predicted_tags,
+          confidence_score: aiResult.confidence_score,
+          severity_score: aiResult.severity_score,
+          severity_reason: aiResult.severity_reason,
+          urgency_flag: aiResult.urgency_flag,
+          suggested_action: aiResult.suggested_action,
+          model_version: aiResult._meta?.model || "gemini-2.5-flash",
+        });
+      }
+
+      toast.success("Report submitted successfully!");
+      navigate("/feed");
+    } catch (err: any) {
+      console.error("Submit error:", err);
+      toast.error(err.message || "Failed to submit report");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const actionLabels: Record<string, string> = {
+    notify_ngo: "Notify nearby NGO",
+    notify_ward_office: "Notify ward office",
+    schedule_cleanup: "Schedule a cleanup drive",
+    inspect_urgently: "Request urgent inspection",
+    monitor_recurrence: "Monitor for recurrence",
   };
 
   return (
@@ -122,28 +235,109 @@ export default function ReportCreate() {
             <Label>Photos</Label>
             <div className="mt-1 border-2 border-dashed border-border rounded-lg p-8 text-center text-muted-foreground">
               <Camera className="h-8 w-8 mx-auto mb-2 opacity-50" />
-              <p className="text-sm">Image upload requires Lovable Cloud storage</p>
-              <p className="text-xs mt-1">Enable backend to activate photo uploads</p>
+              <p className="text-sm">Photo upload coming soon</p>
+              <p className="text-xs mt-1">Storage bucket is ready — UI integration in progress</p>
             </div>
           </div>
 
-          {/* AI analysis placeholder */}
+          {/* AI Analysis */}
           <div className="glass-card p-4">
-            <div className="flex items-center gap-2 mb-2">
+            <div className="flex items-center gap-2 mb-3">
               <Sparkles className="h-4 w-4 text-primary" />
               <span className="font-display font-semibold text-sm">AI-Assisted Analysis</span>
-              <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full">Coming soon</span>
             </div>
-            <p className="text-xs text-muted-foreground">
-              Once enabled, AI will suggest waste type, severity, and urgency from your photo and description. All outputs will be clearly labeled as AI suggestions.
-            </p>
+
+            {!aiResult && !analyzing && (
+              <>
+                <p className="text-xs text-muted-foreground mb-3">
+                  Get AI-powered suggestions for waste type, severity, and recommended action based on your report details.
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleAiAnalyze}
+                  disabled={!title && !description}
+                >
+                  <Sparkles className="h-3 w-3 mr-1" />
+                  Analyze with AI
+                </Button>
+              </>
+            )}
+
+            {analyzing && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Analyzing your report...
+              </div>
+            )}
+
+            {aiResult && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-sm text-green-600">
+                  <CheckCircle2 className="h-4 w-4" />
+                  Analysis complete
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <span className="text-muted-foreground text-xs">Waste Type</span>
+                    <p className="font-medium capitalize">{aiResult.predicted_waste_type?.replace("_", " ")}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground text-xs">Severity</span>
+                    <p className="font-medium">{aiResult.severity_score}/5</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground text-xs">Confidence</span>
+                    <p className="font-medium">{Math.round((aiResult.confidence_score || 0) * 100)}%</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground text-xs">Action</span>
+                    <p className="font-medium text-xs">{actionLabels[aiResult.suggested_action] || aiResult.suggested_action}</p>
+                  </div>
+                </div>
+
+                {aiResult.urgency_flag && (
+                  <div className="flex items-center gap-2 text-sm text-amber-600 bg-amber-50 rounded-md px-3 py-2">
+                    <AlertTriangle className="h-4 w-4" />
+                    Flagged as urgent — potential health hazard
+                  </div>
+                )}
+
+                <p className="text-xs text-muted-foreground">{aiResult.severity_reason}</p>
+
+                {aiResult.predicted_tags && aiResult.predicted_tags.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {aiResult.predicted_tags.map((tag) => (
+                      <span key={tag} className="text-[10px] bg-muted px-2 py-0.5 rounded-full">{tag}</span>
+                    ))}
+                  </div>
+                )}
+
+                <p className="text-[10px] text-muted-foreground/70 italic">
+                  ⚠️ {aiResult._meta?.disclaimer || "AI-assisted suggestion — not ground truth"}
+                </p>
+
+                <Button type="button" variant="ghost" size="sm" onClick={handleAiAnalyze}>
+                  Re-analyze
+                </Button>
+              </div>
+            )}
           </div>
 
-          <Button type="submit" className="w-full" size="lg">
-            Submit Report
+          <Button type="submit" className="w-full" size="lg" disabled={submitting}>
+            {submitting ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Submitting...
+              </>
+            ) : (
+              "Submit Report"
+            )}
           </Button>
           <p className="text-[10px] text-muted-foreground text-center">
-            Demo mode — reports are not persisted. Enable Lovable Cloud for full functionality.
+            Sign in required to submit reports. Reports are stored in the database.
           </p>
         </form>
       </div>
