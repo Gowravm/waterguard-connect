@@ -4,6 +4,7 @@ import { Droplets, MapPin, Users, BarChart3, ArrowRight, Shield, Camera, Sparkle
 import { Button } from "@/components/ui/button";
 import AppLayout from "@/components/layout/AppLayout";
 import { DEMO_REPORTS, DASHBOARD_STATS } from "@/lib/demoData";
+import heroImage from "@/assets/hero-water-community.jpg";
 
 export default function Index() {
   return (
