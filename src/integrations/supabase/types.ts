@@ -14,7 +14,172 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      pollution_reports: {
+        Row: {
+          ai_severity: number | null
+          created_at: string
+          description: string | null
+          id: string
+          lat: number | null
+          lng: number | null
+          location_text: string | null
+          manual_severity: number
+          pollution_category: string
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+          water_body_name: string | null
+        }
+        Insert: {
+          ai_severity?: number | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          lat?: number | null
+          lng?: number | null
+          location_text?: string | null
+          manual_severity: number
+          pollution_category: string
+          status?: string
+          title: string
+          updated_at?: string
+          user_id: string
+          water_body_name?: string | null
+        }
+        Update: {
+          ai_severity?: number | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          lat?: number | null
+          lng?: number | null
+          location_text?: string | null
+          manual_severity?: number
+          pollution_category?: string
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+          water_body_name?: string | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          bio: string | null
+          city: string | null
+          created_at: string
+          display_name: string | null
+          id: string
+          state: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          bio?: string | null
+          city?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          state?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          bio?: string | null
+          city?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          state?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      report_ai_analysis: {
+        Row: {
+          confidence_score: number | null
+          created_at: string
+          id: string
+          model_version: string | null
+          predicted_tags: string[] | null
+          predicted_waste_type: string | null
+          report_id: string
+          severity_reason: string | null
+          severity_score: number | null
+          suggested_action: string | null
+          urgency_flag: boolean | null
+        }
+        Insert: {
+          confidence_score?: number | null
+          created_at?: string
+          id?: string
+          model_version?: string | null
+          predicted_tags?: string[] | null
+          predicted_waste_type?: string | null
+          report_id: string
+          severity_reason?: string | null
+          severity_score?: number | null
+          suggested_action?: string | null
+          urgency_flag?: boolean | null
+        }
+        Update: {
+          confidence_score?: number | null
+          created_at?: string
+          id?: string
+          model_version?: string | null
+          predicted_tags?: string[] | null
+          predicted_waste_type?: string | null
+          report_id?: string
+          severity_reason?: string | null
+          severity_score?: number | null
+          suggested_action?: string | null
+          urgency_flag?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_ai_analysis_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "pollution_reports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      report_images: {
+        Row: {
+          id: string
+          image_url: string
+          report_id: string
+          uploaded_at: string
+        }
+        Insert: {
+          id?: string
+          image_url: string
+          report_id: string
+          uploaded_at?: string
+        }
+        Update: {
+          id?: string
+          image_url?: string
+          report_id?: string
+          uploaded_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_images_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "pollution_reports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
