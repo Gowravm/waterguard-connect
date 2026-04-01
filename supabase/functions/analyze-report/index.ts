@@ -165,13 +165,32 @@ Based on the information provided, respond with your analysis.`;
     }
 
     const data = await response.json();
+    console.log("AI response:", JSON.stringify(data.choices?.[0]?.message).substring(0, 500));
+    
     const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
+    let analysis: any;
 
-    if (!toolCall) {
-      throw new Error("AI did not return structured analysis");
+    if (toolCall) {
+      analysis = JSON.parse(toolCall.function.arguments);
+    } else {
+      // Fallback: try to parse JSON from content
+      const content = data.choices?.[0]?.message?.content || "";
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        analysis = JSON.parse(jsonMatch[0]);
+      } else {
+        // Return a sensible default based on the category
+        analysis = {
+          predicted_waste_type: pollutionCategory || "mixed",
+          predicted_tags: [],
+          confidence_score: 0.5,
+          severity_score: 3,
+          severity_reason: "AI could not produce structured output. Default moderate severity assigned.",
+          urgency_flag: false,
+          suggested_action: "monitor_recurrence",
+        };
+      }
     }
-
-    const analysis = JSON.parse(toolCall.function.arguments);
 
     // Optionally save to database if report_id provided
     const url = new URL(req.url);
