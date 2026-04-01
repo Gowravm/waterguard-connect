@@ -202,7 +202,7 @@ export const SEVERITY_LABELS = [
 export const DASHBOARD_STATS = {
   totalReports: DEMO_REPORTS.length,
   openReports: DEMO_REPORTS.filter(r => r.status === "open").length,
-  resolvedReports: DEMO_REPORTS.filter(r => r.status === "resolved").length,
+  resolvedReports: 0,
   totalVolunteers: 47,
   cleanupEvents: DEMO_POSTS.filter(p => p.type === "event").length,
   topWaterBodies: [
