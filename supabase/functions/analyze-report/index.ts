@@ -101,9 +101,8 @@ Based on the information provided, respond with your analysis.`;
                       description: "Confidence 0.0 to 1.0",
                     },
                     severity_score: {
-                      type: "integer",
-                      enum: [1, 2, 3, 4, 5],
-                      description: "Severity from 1 (minimal) to 5 (critical)",
+                      type: "number",
+                      description: "Severity from 1 (minimal) to 5 (critical), integer",
                     },
                     severity_reason: {
                       type: "string",
